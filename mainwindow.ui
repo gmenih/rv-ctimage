@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>790</width>
-    <height>486</height>
+    <width>810</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>CT Scan Viewer</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -25,14 +25,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QListView" name="imagesList">
+       <widget class="QComboBox" name="lutSelect"/>
+      </item>
+      <item>
+       <widget class="QListWidget" name="imagesList">
         <property name="editTriggers">
          <set>QAbstractItemView::NoEditTriggers</set>
         </property>
        </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="lutSelect"/>
       </item>
      </layout>
     </item>

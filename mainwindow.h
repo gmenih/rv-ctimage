@@ -2,6 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QFileInfo>
+#include <QGraphicsScene>
+#include <QListWidgetItem>
 
 namespace Ui {
 class MainWindow;
@@ -18,10 +21,20 @@ public:
 private slots:
   void on_selectFolderPB_clicked();
 
+  void on_lutSelect_currentIndexChanged(const QString &arg1);
+
+
+  void on_imagesList_itemSelectionChanged();
+
 private:
     Ui::MainWindow *ui;
     QString fileFolder;
     QVector<QString> files;
+    QRgb* palette;
+    QFileInfo currentImage;
+    QGraphicsScene* scene;
+
+    void draw_image(const QFileInfo file);
 };
 
 #endif // MAINWINDOW_H

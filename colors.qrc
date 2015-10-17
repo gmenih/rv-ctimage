@@ -1,0 +1,31 @@
+<RCC>
+    <qresource prefix="/lut">
+        <file alias="6shades">lut/6_shades.lut</file>
+        <file alias="16colors">lut/16_colors.lut</file>
+        <file alias="32colors">lut/32_colors.lut</file>
+        <file alias="amber">lut/amber.lut</file>
+        <file alias="auxtq">lut/auxctq.lut</file>
+        <file alias="BlueOrange">lut/blue_orange.lut</file>
+        <file alias="BlueOrangeICB">lut/blue_orange_icb.lut</file>
+        <file alias="BRG-BCM-MYW">lut/brgbcmyw.lut</file>
+        <file alias="CMY">lut/cmy.lut</file>
+        <file alias="Col">lut/cold.lut</file>
+        <file alias="Cool">lut/cool.lut</file>
+        <file alias="CTI Ras">lut/cti_ras.lut</file>
+        <file alias="Gem 16">lut/gem-16.lut</file>
+        <file alias="Gem 256">lut/gem-256.lut</file>
+        <file alias="Heart">lut/heart.lut</file>
+        <file alias="Invert Gray">lut/invert_gray.lut</file>
+        <file alias="ISO Contour">lut/isocontour.lut</file>
+        <file alias="Out">lut/out</file>
+        <file alias="Royal">lut/royal.lut</file>
+        <file alias="Siemens">lut/siemens.lut</file>
+        <file alias="Smart">lut/smart.lut</file>
+        <file alias="Split BB-RW">lut/split_blackblue_redwhite.lut</file>
+        <file alias="Split BW">lut/split_blackwhite_ge.lut</file>
+        <file alias="Split BW Warmmetal">lut/split_blackwhite_warmmetal.lut</file>
+        <file alias="Splut BR Warmmetal">lut/split_bluered_warmmetal.lut</file>
+        <file alias="Thal 16">lut/thal_16.lut</file>
+        <file alias="Topography">lut/topography.lut</file>
+    </qresource>
+</RCC>
