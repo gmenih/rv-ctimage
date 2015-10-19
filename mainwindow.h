@@ -23,8 +23,9 @@ private slots:
 
   void on_lutSelect_currentIndexChanged(const QString &arg1);
 
-
   void on_imagesList_itemSelectionChanged();
+
+  void on_compressPB_clicked();
 
 private:
     Ui::MainWindow *ui;
