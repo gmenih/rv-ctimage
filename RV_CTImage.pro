@@ -13,9 +13,13 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        mainwindow.cpp \
+    bitwriter.cpp \
+    bitreader.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += mainwindow.h \
+    bitwriter.h \
+    bitreader.h
 
 FORMS    += mainwindow.ui
 

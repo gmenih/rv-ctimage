@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QGraphicsScene>
 #include <QListWidgetItem>
+#include <fstream>
 
 namespace Ui {
 class MainWindow;
@@ -36,6 +37,8 @@ private:
     QGraphicsScene* scene;
 
     void draw_image(const QFileInfo file);
+    void compressFile(QFileInfo file);
+    void decompressImage(QFileInfo file);
 };
 
 #endif // MAINWINDOW_H

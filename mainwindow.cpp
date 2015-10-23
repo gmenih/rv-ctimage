@@ -8,7 +8,11 @@
 #include <QDebug>
 #include <fstream>
 #include <cmath>
+#include <QMessageBox>
+#include <bitset>
 #include <iostream>
+#include "BitWriter.h"
+#include "BitReader.h"
 
 MainWindow::MainWindow(QWidget *parent) :
   QMainWindow(parent),
@@ -37,6 +41,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_selectFolderPB_clicked()
 {
+  files.clear();
   QDir dir(QFileDialog::getExistingDirectory(this, tr("Izberi mapo"), fileFolder, QFileDialog::DontResolveSymlinks));
   if(dir.isReadable()){
       fileFolder = dir.absolutePath();
@@ -80,113 +85,181 @@ void MainWindow::on_lutSelect_currentIndexChanged(const QString &name)
           char *c;
           unsigned char r,g,b;
           int i = 0;
-          while(!inputFile.atEnd()){
+          while(i < inputFile.bytesAvailable()){
               inputFile.getChar(c);
-              r = (*c);
+              r = *c;
               inputFile.getChar(c);
-              g = (*c);
+              g = *c;
               inputFile.getChar(c);
-              b = (*c);
-              palette[i] = QColor::fromRgb((int)r, (int)g, (int)b).rgb();
-              i++;
-              //qDebug() << "R: " << r << ", G: " << g << ", B: " << b;
+              b = *c;
+              palette[i / 3] = QColor::fromRgb((int)r, (int)g, (int)b).rgb();
+              i+=3;
             }
-          //delete c;
           inputFile.close();
-          if(currentImage.exists()){
-              draw_image(currentImage);
-            }
+          qDebug() << i;
         }
     }
 }
-
 void MainWindow::on_imagesList_itemSelectionChanged()
 {
   int index = ui->imagesList->currentRow();
   qDebug() << index;
   QFileInfo file(fileFolder + "/" + files.at(index));
-  if(file.exists()) {
-      //      if(!ui->compressPB->isEnabled()){
-      //          ui->compressPB->setEnabled(true);
-      //        }
+  if(file.exists() && file.suffix() == "img") {
+      if(!ui->compressPB->isEnabled()){
+          ui->compressPB->setEnabled(true);
+        }
       currentImage = file;
       draw_image(file);
+    } else if (file.exists() && file.suffix() == "cmp") {
+      if(ui->compressPB->isEnabled()){
+          ui->compressPB->setEnabled(false);
+        }
+      currentImage = file;
+      decompressImage(file);
     }
 }
-// kok bitov rabim za stevilko
-int BitLen(int nr){
-  return round(log2(nr));
+void MainWindow::compressFile(QFileInfo file) {
+  char DIFF = 0, REPEAT = 1, ABSC = 2, AIR = 3;
+  std::ifstream inFile(file.absoluteFilePath().toStdString(), std::ios::binary | std::ios::in);
+  std::ofstream outFile((fileFolder + "/" + file.baseName() + ".cmp").toStdString(), std::ios::binary | std::ios::out);
+  // vars
+  BitWriter bw(outFile);
+  signed short readByte, prev = -9999;
+  //char writeByte = 0, nBits = 0;
+  char repeats = 0;
+  while(!inFile.eof()) {
+      inFile.read((char *)&readByte, 2); // preberem 2 byta v short
+      if(repeats > 0 && prev != readByte || repeats >= 63){
+          bw.writeBits(REPEAT, 2);
+          bw.writeBits(repeats, 6);
+          repeats = 0;
+        }
+      if(readByte == -2048) {
+          bw.writeBits(AIR, 2);
+        } else if(abs(prev - readByte) == 0) {
+          repeats++;
+        } else if(abs(prev - readByte) < 30) {
+          int diff = readByte - prev;
+          int absDiff = abs(diff);
+          int bLen = 0;
+          if(absDiff <= 2) {
+              if(diff < 0)
+                diff += 2;
+              else
+                diff += 1;
+            } else if(absDiff <= 6) {
+              if(diff < 0)
+                diff += 6;
+              else
+                diff += 1;
+              bLen = 1;
+            } else if(absDiff <= 14) {
+              if(diff < 0)
+                diff += 14;
+              else
+                diff += 1;
+              bLen = 2;
+            } else if(absDiff < 30) {
+              if(diff < 0)
+                diff += 30;
+              else
+                diff += 1;
+              bLen = 3;
+            }
+          bw.writeBits(DIFF, 2);
+          bw.writeBits(bLen, 2);
+          bw.writeBits(diff, (bLen + 2));
+        } else {
+          bw.writeBits(ABSC, 2);
+          bw.writeBits((int)(readByte + 2048), 12);
+        }
+      prev = readByte;
+    }
+  if(repeats > 0) {
+      bw.writeBits(REPEAT, 2);
+      bw.writeBits(repeats - 1, 6);
+    }
+  bw.writeOffset();
+  inFile.close();
+  outFile.close();
+}
+
+void MainWindow::decompressImage(QFileInfo file) {
+  char DIFF = 0, REPEAT = 1, ABSC = 2, AIR = 3;
+  QImage image(512, 512, QImage::Format_RGB16);
+  std::ifstream inFile(file.absoluteFilePath().toStdString(), std::ios::binary | std::ios::in);
+  //ofstream outFile("original0185.img", ios::binary | ios::out);
+  BitReader br(inFile);
+  int pixel = 0, prev, nrBytes = 0;
+  while(!inFile.eof()){
+      if(nrBytes >= (512 * 512))
+        break;
+      int action = br.readBits(2);
+      if(action == AIR) {
+          pixel = -2048;
+        } else if(action == REPEAT) {
+          int repeats = br.readBits(6);
+          float pxVal = (((float)prev + 2048) / 4095) * 255;
+          for(int i = 0; i < repeats - 1; i++){
+              int x = (nrBytes + 1) / 512;
+              int y = (nrBytes + 1) % 512;
+              image.setPixel(x, y, palette[(int)pxVal]);
+              nrBytes++;
+            }
+        } else if(action == DIFF) {
+          int we = br.readBits(2);
+          we+= 2;
+          int a = br.readBits(we);
+          int e = pow(2, we);
+          if(a < e / 2)
+            a -= (e - 2);
+          else
+            a -= 1;
+          pixel = prev + a;
+
+        } else if(action == ABSC) {
+          pixel = br.readBits((int)12);
+          pixel = (pixel - 2048);
+        }
+      prev = pixel;
+      int x = (nrBytes + 1) / 512;
+      int y = (nrBytes + 1) % 512;
+      float pxVal = (((float)pixel + 2048) / 4095) * 255;
+      image.setPixel(x, y, palette[(int)pxVal]);
+      nrBytes++;
+
+    }
+  inFile.close();
+  scene->clear();
+  scene->addPixmap(QPixmap::fromImage(image));
+  ui->imageDIsplay->setScene(scene);
 }
 
 void MainWindow::on_compressPB_clicked()
 {
-  char cr[4] = {(char)0, (char)1, (char)2, (char)3};
-  qDebug() << "Clicked";
-  std::ifstream inputFile(currentImage.absoluteFilePath().toStdString(), std::ios::binary | std::ios::in);
-  std::ofstream outputFile(fileFolder.toStdString() + "/" + currentImage.baseName().toStdString() + ".cmp", std::ios::binary | std::ios::out);
-  if(inputFile.good()){
-      qDebug() << "File read.";
-      signed short s;
-      signed short prev;
-      int nrBits = 0;
-      char crByte = 0;
-      while(!inputFile.eof()){
-          inputFile.read((char*)s, 2);
-          if(s == -2048){
-              crByte = (crByte << 2) | cr[3]; // zrak
-              nrBits += 2;
-            } else if(abs(prev - s) > 30){ // absolutno u kurcu
-              crByte = (crByte << 2) | cr[2];
-              int wBits = 12; // 12 bitov rabim
-              short val = (0 << 12) | s;
-              while(wBits > 0) {
-                  if(nrBits == 8) {
-                      outputFile.put(crByte);
-                      crByte = 0;
-                      nrBits = 0;
-                    }
-                  int shift = (8 - nrBits);
-                  if(wBits < shift)
-                    shift = wBits;
-                  crByte = crByte << shift;
-                  crByte = crByte | (val >> (wBits - shift));
-                  nrBits += shift;
-                      wBits -= shift;
-                }
-            } else if(abs(prev - s) <= 30 && abs(prev - s) != 0) { // holy fuck
-              int val = prev - s;
-              int wBits = BitLen(abs(prev - s)); // min bitov
-              if(wBits <= 2) { // [-2, 2]
-                val += 2;
-                wBits = 2;
-              } else if(wBits <= 3) { // [-6, -3][3, 6]
-                if(val < 0)
-                  val += 6;
-                else
-                  val = val + 1;
-              } else if(wBits <= 4) { // [-14, -7][7, 14]
-                if(val < 0)
-                  val += 14;
-                else
-                  val += 1;
-              } else { // [-30, -15][15, 30]
-                if(val < 0)
-                  val += 30;
-                else 
-                  val += 1;
-              }
-
-            } else { // ponovitev
-              
-            }
-          prev = s;
-        }
-      // write byte
-      if(nrBits == 8) {
-          outputFile.put(crByte);
-          crByte = 0;
-          nrBits = 0;
-        }
+  qDebug() << "Compressing file";
+  compressFile(currentImage);
+  QMessageBox msgBox;
+  QFileInfo newFile(currentImage.absolutePath() + "/" + currentImage.baseName() + ".cmp");
+  if(newFile.exists()){
+      float razmerje = (float)currentImage.size() / (float)newFile.size();
+      msgBox.setText("Datoteka je bila stisnjena. Razmerje stiskanja: " + QString::number(razmerje));
+    } else {
+      msgBox.setText("Napaka pri kompresiji.");
     }
-    inputFile.close();
+  msgBox.exec();
+  QDir dir(fileFolder);
+  files.clear();
+  if(dir.isReadable()){
+      fileFolder = dir.absolutePath();
+      QFileInfoList fileList = dir.entryInfoList();
+      foreach(const QFileInfo file, fileList){
+          std::cout << file.fileName().toStdString() << std::endl;
+          if(file.suffix() == "img" || file.suffix() == "cmp")
+            files.push_back(file.fileName());
+        }
+      ui->imagesList->clear();
+      ui->imagesList->addItems(QList<QString>::fromVector(files));
+    }
 }
