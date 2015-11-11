@@ -59,7 +59,7 @@ void MainWindow::draw_image(const QFileInfo file) {
   QImage image(512, 512, QImage::Format_RGB16);
   std::ifstream inputFile(file.absoluteFilePath().toStdString(), std::ios::binary | std::ios::in);
   if(inputFile.good()) {
-      int i = 1;
+      int i = 0;
       signed short pixel;
       while(!inputFile.eof()) {
           inputFile.read((char*)&pixel, 2);
@@ -81,7 +81,6 @@ void MainWindow::on_lutSelect_currentIndexChanged(const QString &name)
   if(name != tr("Izberi paleto...")){
       QFile inputFile(":/lut/" + name);
       if(inputFile.open(QFile::ReadOnly)){
-          qDebug() << "File opened.";
           char *c;
           unsigned char r,g,b;
           int i = 0;
@@ -96,7 +95,11 @@ void MainWindow::on_lutSelect_currentIndexChanged(const QString &name)
               i+=3;
             }
           inputFile.close();
-          qDebug() << i;
+          if(currentImage.suffix() == "img"){
+              draw_image(currentImage);
+            } else if(currentImage.suffix() == "cmp"){
+              decompressImage(currentImage);
+            }
         }
     }
 }
@@ -238,7 +241,6 @@ void MainWindow::decompressImage(QFileInfo file) {
 
 void MainWindow::on_compressPB_clicked()
 {
-  qDebug() << "Compressing file";
   compressFile(currentImage);
   QMessageBox msgBox;
   QFileInfo newFile(currentImage.absolutePath() + "/" + currentImage.baseName() + ".cmp");
